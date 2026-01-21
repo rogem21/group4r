@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>Reflection — Profile Mock</title>
+	<style>
+		:root{
+			--bg:#0f1113;
+			--panel:#1416;
+			--muted:#9aa0a6;
+			--accent:#ffffff;
+		}
+		html,body{height:100%;}
+		body{
+			margin:0;
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+			background:var(--bg);
+			color:var(--accent);
+			-webkit-font-smoothing:antialiased;
+			-moz-osx-font-smoothing:grayscale;
+		}
+
+		/* background with optional user image (place images/bg.jpg next to reflection.html)
+		   The image will be drawn first; browser will skip it if missing and fall back to overlay. */
+		body::before{
+			content:"";
+			position:fixed;
+			inset:0;
+			z-index:-1;
+			pointer-events:none;
+			background-color:var(--bg);
+			background-image:
+				url('images/bg.jpg'),
+				/* glowing molecular nodes */
+				radial-gradient(circle at 12% 18%, rgba(96,165,250,0.10) 0 6px, transparent 12px),
+				radial-gradient(circle at 36% 62%, rgba(216,180,255,0.08) 0 6px, transparent 12px),
+				radial-gradient(circle at 78% 28%, rgba(255,255,255,0.05) 0 5px, transparent 10px),
+				/* subtle molecular grid */
+				repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.02) 40px),
+				repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.02) 40px);
+			background-size: cover, auto, auto, auto, 200px 200px, 200px 200px;
+			background-position: center, 12% 18%, 36% 62%, 78% 28%, 0 0, 0 0;
+			background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat, repeat;
+			opacity:0.95;
+			mix-blend-mode:overlay;
+		}
+
+		.container{
+			max-width:1100px;
+			margin:36px auto;
+			padding:20px;
+		}
+
+		.profile{
+			display:flex;
+			gap:28px;
+			align-items:center;
+			padding:18px 12px;
+			justify-content:center; /* center the profile block horizontally */
+		}
+
+		.avatar{
+			width:130px;
+			height:130px;
+			border-radius:50%;
+			background:linear-gradient(135deg,#d8b4ff,#60a5fa);
+			display:flex;
+			align-items:center;
+			justify-content:center;
+			box-shadow: 0 2px 6px rgba(0,0,0,.6);
+			flex-shrink:0;
+			overflow:hidden;
+			border:4px solid rgba(255,255,255,0.06);
+		}
+
+		.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+
+		.meta{
+			flex:0 0 auto;
+			min-width:0;
+			text-align:center; /* center text under avatar when centered */
+		}
+
+		.meta h1{
+			margin:0 0 6px 0;
+			font-size:22px;
+			display:flex;
+			align-items:center;
+			gap:10px;
+		}
+
+		.meta .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+
+		.actions{display:flex;gap:12px;margin-bottom:12px;justify-content:center}
+		.btn{background:rgba(255,255,255,0.06);border:0;padding:10px 16px;border-radius:8px;color:var(--accent);cursor:pointer}
+
+		.stats{display:flex;gap:18px;color:var(--muted);font-size:14px;justify-content:center; 
+            margin-bottom:14px;}
+
+		.new-post{display:flex;align-items:center;flex-direction:column;margin-top:14px;color:var(--muted)}
+		.new-post .circle{width:68px;height:68px;border-radius:50%;border:2px dashed rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center}
+
+		/* grid */
+		.tabs{display:flex;gap:16px;align-items:center;border-top:1px solid rgba(255,255,255,0.02);padding-top:18px;margin-top:10px}
+		.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+		.tile{position:relative;padding-top:100%;overflow:hidden;background:#222;border-radius:6px}
+		.tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+		/* hover overlay showing likes/comments */
+		.tile .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .18s ease,transform .18s ease;transform:translateY(6px)}
+		.tile:hover .overlay{opacity:1;transform:translateY(0);pointer-events:auto}
+		.tile .overlay .meta{display:flex;gap:14px;align-items:center;background:rgba(0,0,0,0.32);padding:8px 14px;border-radius:24px;flex-wrap:wrap}
+		.tile .overlay .meta .item{display:flex;align-items:center;gap:10px;color:#fff;font-weight:600;font-size:15px;white-space:nowrap}
+		.tile .overlay .meta .icon{width:30px;height:30px;flex:0 0 30px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,0.06);font-size:13px}
+		.tile .overlay .meta .name{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block}
+		.tile .overlay svg{width:14px;height:14px;display:block}
+
+		.tile::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.15));opacity:0;transition:opacity .15s}
+		.tile:hover::after{opacity:1}
+
+		@media (max-width:720px){
+			.container{padding:12px}
+			.profile{flex-direction:column;align-items:center}
+			.avatar{width:96px;height:96px}
+			.grid{grid-template-columns:repeat(3,1fr);gap:6px}
+		}
+	</style>
+</head>
+<body>
+    <main class="container">
+		<section class="profile">
+			<div class="avatar">
+				<img src="pf.jfif">
+			</div>
+			<div class="meta">
+				<h1>
+					GROUP 4 <span style="color:var(--muted);font-size:14px">⚙️</span>
+				</h1>
+				<div class="sub">GROUP 4</div>
+				<div class="stats">
+					<div><strong style="color:var(--accent)">10</strong> members</div>
+					<div><strong style="color:var(--accent)">10</strong> disease</div>
+				</div>
+				<div class="actions">
+					<button class="btn">Edit profile</button>
+					<button class="btn">View archive</button>
+				</div>
+				<div class="new-post">
+					<div class="circle">+</div>
+					<div style="font-size:12px;margin-top:8px;color:var(--muted)">New</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="tabs">
+			<div style="color:var(--muted);display:flex;gap:14px;align-items:center">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="opacity:.9"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>
+				<span style="font-size:13px;color:var(--muted)">Posts</span>
+			</div>
+		</section>
+
+		<section class="grid" aria-label="photos">
+			<!-- standardized tiles with letter icons for likes/comments -->
+			<div class="tile">
+				<img src="rog.jfif" alt="photo" data-caption="Rogem — Fresh cut at the market" data-desc="Learning about Type 2 Diabetes Mellitus made me realize how lifestyle choices greatly affect our health. This disease develops slowly and is often linked to poor diet, lack of exercise, and obesity, which are common in modern lifestyles. I learned that the body either does not use insulin properly or does not produce enough of it, causing high blood sugar levels that can damage different organs if not managed well.
+
+This topic helped me understand the importance of maintaining a balanced diet, regular physical activity, and healthy habits to prevent or control the disease. It also made me more aware of the struggles faced by people living with diabetes, such as constant monitoring of blood sugar and making careful food choices every day.
+
+Overall, studying Type 2 Diabetes Mellitus encouraged me to be more responsible about my health and to promote awareness among others. Preventing this disease is possible through discipline, education, and lifestyle changes, which can lead to a healthier and longer life.">
+                 <div class="overlay" aria-hidden="true">
+                     <div class="meta">
+                         <div class="item"><span class="icon">C</span><span class="name">Cortez</span></div>
+                         <div class="item"><span class="icon">R</span><span class="name">Rogem</span></div>
+                     </div>
+                 </div>
+             </div>
+             <div class="tile">
+				<img src="lb.jpg" alt="photo" data-caption="Lebron — Training day" data-desc="This lessons helped me see that the body really works like a team. Every system depends on the others, and when one part isn’t working well, the rest try to help out. For example, if the lungs can’t supply enough oxygen, the heart works harder to keep the body going. This made me realize how connected everything inside our body is and how important it is for all systems to stay healthy.
+
+I also learned that most diseases don’t affect just one part of the body, they usually involve several systems at once. This made me more aware of how my daily choices, like what I eat, how much I move, and how well I rest, can affect my overall health. These lessons taught me that understanding how the body works together can help us make better decisions and take better care of ourselves.">
+                 <div class="overlay" aria-hidden="true">
+                     <div class="meta">
+                         <div class="item"><span class="icon">P</span><span class="name">Palafox</span></div>
+                         <div class="item"><span class="icon">L</span><span class="name">Lebron</span></div>
+                     </div>
+                 </div>
+             </div>
+             <div class="tile">
+				<img src="seb.jpg" alt="photo" data-caption="Sebastian — Field trip" data-desc="Learning about the human body and homeostasis showed me how our bodies stay balanced without us noticing. I used to think feeling “normal” just happened, but many systems work together to keep us stable.
+
+Different systems like the digestive, circulatory, and respiratory systems depend on each other. If one system has a problem, others can be affected too, which shows how connected our body is.
+
+Homeostasis keeps things like temperature and water levels controlled. Sweating, shivering, and hormones all help restore balance. Now I want to take better care of my health because our bodies work hard every day.">
+                 <div class="overlay" aria-hidden="true">
+                     <div class="meta">
+                         <div class="item"><span class="icon">L</span><span class="name">Lazaro</span></div>
+                         <div class="item"><span class="icon">S</span><span class="name">Sebastian</span></div>
+                     </div>
+                 </div>
+             </div>
+             <div class="tile">
+				<img src="ren.jpg" alt="photo" data-caption="Renzo — Class day" data-desc="The human body functions as an organized system that works to keep its internal condition steady. This regulation allows the body to control important factors such as temperature, acidity, and glucose levels so that organs and cells can work efficiently. If this balance is disrupted, the body may experience discomfort or illness. When everything is properly regulated, the cells are able to perform their roles, resulting in good health. The body also has a natural protection mechanism that defends it from harmful microorganisms. Physical barriers like the skin prevent germs from entering, while specialized cells identify and eliminate threats that manage to get inside. This coordinated response helps the body stay protected from infections. When the defense system weakens, the risk of sickness increases. To keep it strong, proper nutrition, regular physical activity, sufficient rest, and stress control are essential.">
+                 <div class="overlay" aria-hidden="true">
+                     <div class="meta">
+                         <div class="item"><span class="icon">M</span><span class="name">Marmol</span></div>
+                         <div class="item"><span class="icon">R</span><span class="name">Renzo</span></div>
+                     </div>
+                 </div>
+             </div>
+             <div class="tile">
+				<img src="jaz.jpg" alt="photo" data-caption="Jazzie — Team meetup" data-desc="I used to think body system connections were just school material, but now I know they affect daily life and healthcare. I understand why my doctor asks about diet and stress for blood pressure, food impacts the heart and digestion, while stress disrupts nerves and hormones, and everything’s linked. 
+
+This has changed my habits: I stay hydrated to support my kidneys and heart, and do breathing exercises to manage stress. I also realize doctors need to address root causes instead of just symptoms, since issues spread across systems, it made me interested in how preventive habits keep everything working right.">
+                 <div class="overlay" aria-hidden="true">
+                     <div class="meta">
+                         <div class="item"><span class="icon">N</span><span class="name">Nadua</span></div>
+                         <div class="item"><span class="icon">J</span><span class="name">Jazzie</span></div>
+                     </div>
+                 </div>
+             </div>
+             <div class="tile">
+				<img src="mark.jpg" alt="photo" data-caption="Mark — Ceremony photo" data-desc="Ceremony highlights — proud moments.">
+                 <div class="overlay" aria-hidden="true">
+                     <div class="meta">
+                         <div class="item"><span class="icon">P</span><span class="name">Ponferrada</span></div>
+                         <div class="item"><span class="icon">M</span><span class="name">Mark</span></div>
+                     </div>
+                 </div>
+             </div>
+             <div class="tile">
+				<img src="no.jpg" alt="photo" data-caption="Nobles — Street snap" data-desc="Candid street snap — everyday life captured.">
+                 <div class="overlay" aria-hidden="true">
+                     <div class="meta">
+                         <div class="item"><span class="icon">N</span><span class="name">Nobles</span></div>
+                         <div class="item"><span class="icon">P</span><span class="name">Prince</span></div>
+                     </div>
+                 </div>
+             </div>
+             <div class="tile">
+				<img src="https://picsum.photos/seed/8/800" alt="photo" data-caption="Joanna — Candid moment" data-desc="A candid moment — small joys.">
+                 <div class="overlay" aria-hidden="true">
+                     <div class="meta">
+                         <div class="item"><span class="icon">H</span><span class="name">Hurboda</span></div>
+                         <div class="item"><span class="icon">J</span><span class="name">Joanna</span></div>
+                     </div>
+                 </div>
+             </div>
+             <div class="tile">
+				<img src="mhai.jpg" alt="photo" data-caption="Mhia — Group activity" data-desc="The human body is like a super complex system that keeps things balanced through homeostasis. It's like an internal thermostat regulating temperature, pH, and blood sugar so we function properly. Without it, our body will feel sick. When stable, our cells work right and we're healthy.
+
+Our body's defense system is like a security squad. Skin and mucous membranes block invaders, and immune cells fight off pathogens. It's a team effort keeping us safe. When it works, we're like Fort Knox! When it's off, infections sneak in. To support it? Eat well, exercise, sleep, manage stress.">
+                 <div class="overlay" aria-hidden="true">
+                     <div class="meta">
+                         <div class="item"><span class="icon">S</span><span class="name">Sarmiento</span></div>
+                         <div class="item"><span class="icon">M</span><span class="name">Mhia</span></div>
+                     </div>
+                 </div>
+             </div>
+             <div class="tile">
+				<img src="al.jpg" alt="photo" data-caption="Alinapon — Graduation day" data-desc="Graduation day — achievements celebrated.">
+                     <div class="overlay" aria-hidden="true">
+                         <div class="meta">
+                             <div class="item"><span class="icon">A</span><span class="name">Alinapon</span></div>
+                             <div class="item"><span class="icon">R</span><span class="name">Rheanne</span></div>
+                         </div>
+                     </div>
+             </div>
+          <div class="tile">
+               <img src="li.jpg" alt="photo" data-key="garino" data-caption="Garino — Lianne" data-desc="Through learning about Alzheimer’s disease, I realized just how fragile the balance of our bodies truly is. I used to think of it only as a disease of the mind, but I’ve discovered that it actually begins with a failure of the body to provide—specifically when the circulatory system cannot deliver enough blood, oxygen, and nutrients to the brain.
+
+It’s eye-opening to see how important homeostasis is for our identity. When our internal environment becomes unstable, it creates a cycle where the brain can no longer help regulate itself, making the damage even worse. This lesson taught me that protecting my heart and circulation is actually a way of protecting my mind and the memories that make me who I am.">
+              <div class="overlay" aria-hidden="true">
+                   <div class="meta">
+                      <div class="item"><span class="icon">G</span><span class="name">Garino</span></div>
+                      <div class="item"><span class="icon">L</span><span class="name">Lianne</span></div>
+                  </div>
+              </div>
+           </div>
+		
+		</section>
+	</main>
+
+    <!-- lightbox for clicked photo -->
+    <div id="lightbox" class="lightbox" aria-hidden="true" role="dialog" aria-label="Photo viewer">
+        <div class="lightbox-backdrop" data-close></div>
+
+        <!-- new two-column lightbox: large media left, side panel right -->
+        <div class="lightbox-content" role="document">
+            <button class="lightbox-close" aria-label="Close" data-close>&times;</button>
+
+            <div class="lightbox-grid">
+                <div class="lightbox-media">
+                    <img id="lightbox-img" alt="">
+                </div>
+
+                <aside class="lightbox-side" role="complementary">
+                    <header class="side-header">
+                        <div class="side-user">
+                            <div class="side-avatar"> 4 </div>
+                            <div class="side-meta">
+                                <div id="side-username" class="username">group_4</div>
+                                <p id="side-desc" class="side-desc"></p>
+                                <div class="when" id="side-time"> Jan 21, 2026</div>
+                            </div>
+                        </div>
+                        <div class="side-actions">
+                            <button class="icon-btn" id="like-btn" aria-label="Like">♡</button>
+                            <button class="icon-btn" aria-label="More">⋯</button>
+                        </div>
+                    </header>
+
+                    <div class="side-caption" id="side-caption">Caption goes here</div>
+
+                    <div class="side-comments" id="side-comments">                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+                        <div class="no-comments">No comments yet. Start the conversation.</div>
+                    </div>
+
+                    <footer class="side-footer">
+                        <input id="comment-input" class="comment-input" placeholder="Add a comment…" />
+                        <button class="btn" id="post-comment">Post</button>
+                    </footer>
+                </aside>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* lightbox styles - two column viewer (large media + side panel) */
+        .lightbox{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity .18s ease;background:rgba(0,0,0,0.6)}
+        .lightbox[aria-hidden="false"]{opacity:1;pointer-events:auto}
+        .lightbox-backdrop{position:absolute;inset:0}
+        .lightbox-content{position:relative;z-index:2;max-width:92vw;max-height:92vh;padding:8px;box-sizing:border-box}
+        .lightbox-close{position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.06);border:0;color:#fff;font-size:20px;width:36px;height:36px;border-radius:8px;cursor:pointer;z-index:3}
+
+        .lightbox-grid{display:flex;gap:18px;width:90vw;max-width:1200px;height:80vh;background:rgba(0,0,0,0.0);align-items:stretch}
+        /* allow the side panel to scroll if caption is very long so the caption itself can expand fully */
+        .lightbox-side{width:360px;background:linear-gradient(180deg,rgba(0,0,0,0.85),rgba(0,0,0,0.9));border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px;box-sizing:border-box;color:#ddd;overflow:auto}
+
+        .lightbox-media{flex:1 1 68%;background:#000;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+        .lightbox-media img{max-width:100%;max-height:100%;object-fit:contain;display:block;border-radius:8px}
+
+        .side-header{display:flex;justify-content:space-between;align-items:center}
+        .side-user{display:flex;gap:10px;align-items:center}
+        .side-avatar{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-weight:700}
+        .side-meta .username{font-weight:700}
+        .side-meta .when{font-size:12px;color:rgba(255,255,255,0.45)}
+        .side-desc{margin:6px 0 0;color:rgba(255,255,255,0.72);font-size:13px;line-height:1.4;max-height:100%;overflow:auto}
+
+        .side-actions .icon-btn{background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer;padding:6px}
+
+        .side-caption{
+            font-size:14px;
+            color:#fff;
+            background:rgba(255,255,255,0.02);
+            padding:10px;
+            border-radius:8px;
+
+            /* preserve newlines and wrap — let the caption expand fully */
+            white-space:pre-wrap;
+            word-break:break-word;
+            line-height:1.45;
+            max-height:none;       /* allow caption to grow */
+            overflow:visible;      /* let the side panel handle scrolling */
+        }
+
+        .side-comments{flex:1 1 auto;overflow:auto;padding-right:6px}
+        .no-comments{color:rgba(255,255,255,0.5);text-align:center;margin-top:20px;font-size:13px}
+		/* pinned creator comment */
+		.side-comments .comment.pinned{background:rgba(255,255,255,0.02);border-left:3px solid rgba(255,255,255,0.14);padding:10px 8px;margin-bottom:8px;display:flex;gap:8px;align-items:flex-start}
+		.side-comments .comment.pinned .pin-badge{background:rgba(255,255,255,0.06);color:#fff;padding:2px 6px;border-radius:10px;font-size:12px;align-self:center}
+		.side-comments .comment{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,0.03)}
+        .side-footer{display:flex;gap:8px;align-items:center}
+        .comment-input{flex:1;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);color:#fff}
+        .comment-input::placeholder{color:rgba(255,255,255,0.35)}
+        .side-footer .btn{padding:8px 12px;border-radius:8px}
+
+        @media (max-width:900px){
+            .lightbox-grid{flex-direction:column;height:auto;max-height:90vh;width:92vw}
+            .lightbox-side{width:100%;height:auto}
+            .lightbox-media{width:100%;height:60vh}
+        }
+    </style>
+
+    <script>
+        // open image in enhanced lightbox (fills left and shows side panel)
+        (function(){
+            const lightbox = document.getElementById('lightbox');
+            const lbImg = document.getElementById('lightbox-img');
+            const lbCaption = document.getElementById('side-caption');
+            const lbDesc = document.getElementById('side-desc');
+            const lbUsername = document.getElementById('side-username');
+            const lbComments = document.getElementById('side-comments');
+            const commentInput = document.getElementById('comment-input');
+            const postBtn = document.getElementById('post-comment');
+
+            // store comments per-image (keyed by image src or a data-key)
+            const commentsStore = new Map();
+
+            function renderCommentsForKey(key){
+                lbComments.innerHTML = '';
+                const list = commentsStore.get(key) || [];
+                if(list.length === 0){
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'no-comments';
+                    placeholder.textContent = 'No comments yet. Start the conversation.';
+                    lbComments.appendChild(placeholder);
+                    return;
+                }
+                list.forEach(c=>{
+                    const el = document.createElement('div');
+                    el.className = 'comment';
+                    el.style.padding = '8px 6px';
+                    el.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
+                    el.innerHTML = '<strong style="color:#fff;">'+escapeHtml(c.user)+'</strong> <div style="color:rgba(255,255,255,0.85);font-size:14px">'+escapeHtml(c.text)+'</div>';
+                    lbComments.appendChild(el);
+                });
+            }
+
+            function open(src, metadata, key){
+                lbImg.src = src;
+                lbImg.alt = metadata.caption || 'Photo';
+                lbCaption.textContent = metadata.caption || '';
+                // show per-photo paragraph (prefer metadata.desc, then data-desc on the image)
+                const desc = (metadata && metadata.desc) || (document.querySelector('[data-key="'+key+'"]')?.dataset.desc) || ''
+              lbDesc.innerHTML = escapeHtml(desc).replace(/\n/g,'<br>');
+                lbUsername.textContent = metadata.user || 'user';
+                // render comments for this image key
+                renderCommentsForKey(key);
+                // remember current key on the lightbox element for post handler
+                lightbox.dataset.currentKey = key;
+                lightbox.setAttribute('aria-hidden','false');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function close(){
+                lightbox.setAttribute('aria-hidden','true');
+                lbImg.src = '';
+                delete lightbox.dataset.currentKey;
+                document.body.style.overflow = '';
+            }
+
+            // attach click handlers to tiles
+            document.querySelectorAll('.tile').forEach((tile, idx)=>{
+                const img = tile.querySelector('img');
+                // provide a stable per-image key (prefer data-key, fallback to src)
+                const key = img.dataset.key || img.src || ('img-' + idx);
+                img.dataset.key = key;
+
+                tile.addEventListener('click', (e)=>{
+                    const names = Array.from(tile.querySelectorAll('.overlay .meta .name')).map(n=>n.textContent.trim()).filter(Boolean);
+                    const caption = names.join(' · ');
+                    const user = names[0] || 'user';
+                    // ensure store has an entry (could be pre-seeded)
+                    if(!commentsStore.has(key)) commentsStore.set(key, []);
+-                    open(img.src, { caption, user, comments: commentsStore.get(key) }, key);
++                    // pass image's description (data-desc) so each photo shows its own paragraph
++                    open(img.src, { caption, user, desc: img.dataset.desc || '' , comments: commentsStore.get(key) }, key);
+                });
+            });
+
+            // post comment (adds to side-comments and persists to store for this image)
+            postBtn.addEventListener('click', ()=>{
+                const txt = commentInput.value.trim();
+                if(!txt) return;
+                const key = lightbox.dataset.currentKey;
+                if(!key) return;
+                const list = commentsStore.get(key) || [];
+                const comment = { user: 'You', text: txt, ts: Date.now() };
+                list.push(comment);
+                commentsStore.set(key, list);
+                // re-render comments
+                renderCommentsForKey(key);
+                commentInput.value = '';
+            });
+
+            // close handlers
+            lightbox.addEventListener('click', (e)=>{
+                if (e.target.hasAttribute('data-close') || e.target === lightbox) close();
+            });
+            document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') close(); });
+
+            // small helper to avoid injection when building innerHTML
+            function escapeHtml(s){
+                return String(s).replace(/[&<>"']/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; });
+            }
+        })();
+    </script>
+</body>
+</html>
+
